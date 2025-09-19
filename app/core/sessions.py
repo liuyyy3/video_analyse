@@ -5,10 +5,12 @@
 
 # 会话状态 & 启停调度（关键：enabled ∧ ControlCommand）
 
+import json
 from dataclasses import dataclass, field
 from typing import Dict, Any
 from app.adapters.csrnet_adapter import CsrnetAdapter
 from app.adapters.leftover_adapter import LeftoverAdapter
+from app.utils.name_map import norm_alg
 
 class Session:
     sid: str
@@ -32,7 +34,12 @@ def ensure_session(sid: str) -> Session:
 def start_selected(sess: Session):
     # 只启动运行被勾选的算法
     for key in sess.selected:
-        sess.algs[key].start(media_name = sess.media_name, media_url = sess.media_url, **sess.opt.get(key, {}))
+        sess.algs[key].start(
+            session_id=sess.sid,
+            media_name=sess.media_name,
+            media_url=sess.media_url,
+            **sess.opts.get(key, {})
+        )
 
 def stop_all(sess: Session):
     for key, adapter in sess.algs.items():
@@ -41,17 +48,23 @@ def stop_all(sess: Session):
 def apply_config(sess:Session, media_name: str, media_url: str, items:list, running_now: bool):
     # 把 Node 拉来的“任务配置”应用到本地：更新勾选集合/参数。
     # 如果当前 running_now=True，做热更新：新增则启动，被取消则停止。
+    if isinstance(items, str):
+        try:
+            items = json.load(items)
+        except Exception:
+            items = []
+
     old = set(sess.selected)
     new = set()
-    new_opts: dict[str, dict] = {}
+    new_opts = {}
 
-    from app.utils.name_map import norm_alg
     for it in items:
         key = norm_alg(it.get("name"))
         if not key:
             continue
-        new.add(key)
-        new_opts[key] = it
+        if bool(it.get("enabled", False)):
+            new.add(key)
+            new_opts[key] = it
 
     sess.media_name, sess.media_url = media_name, media_url
     sess.selected = new
@@ -59,9 +72,11 @@ def apply_config(sess:Session, media_name: str, media_url: str, items:list, runn
 
     if running_now:
         for key in new - old:  # 新增勾选 → 立即启动
-            sess.algs[key].start(media_name = media_name, media_url = media_url, **sess.opts.get(key, {}))
+            sess.algs[key].start(
+                session_id = sess.sid,
+                media_name = media_name, media_url = media_url, **sess.opts.get(key, {}))
         for key in old - new:  # 取消勾选 → 立即停止
-            sess.algs[key].stpo()
+            sess.algs[key].stop()
 
 
 

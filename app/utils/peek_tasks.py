@@ -2,6 +2,9 @@
 # @File  : peek_tasks.py
 # @Author: Xinghui
 # @Date  : 2025/09/18/14:24
+
+# 测试一下能不能从后端服务器拉取到任务的相关的 json信息
+
 import argparse
 # 用于查询后端服务器上传了什么的小脚本
 

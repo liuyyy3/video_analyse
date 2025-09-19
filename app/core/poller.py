@@ -9,6 +9,12 @@ import threading, time, requests
 from app.core.config import Config
 from app.core.sessions import ensure_session, apply_config, start_selected, stop_all
 
+import os
+import json
+PAGE_SIZE = int(os.getenv("PAGE_SIZE", "10"))
+PAGE_NUM = int(os.getenv("PAGE_NUM",  "1"))
+KEYWORD = os.getenv("KEYWORD", "")
+
 class Poller(threading.Thread):
     def __init__(self):
         super().__init__(daemon=True)
@@ -27,29 +33,41 @@ class Poller(threading.Thread):
 
     def tick(self):
         # === 1) 拉任务列表（你们后端的数据结构可能是：一个数组，包含每个任务的状态）===
-        # TODO：按你们实际返回的 JSON 结构改这段解析
         headers = {"Authorization": f"Bearer {Config.TOKEN}"} if Config.TOKEN else {}
-        r = requests.get(Config.TASK_FETCH_URL, headers=headers, timeout=5)
+        params = {"pageSize": PAGE_SIZE, "pageNum": PAGE_NUM, "keyword": KEYWORD}
+        r = requests.get(Config.TASK_FETCH_URL, headers=headers, params=params, timeout=8)
         r.raise_for_status()
-        tasks = r.json().get("data") or r.json()
+        payload = r.json()
+        tasks = payload.get("data") or payload
+        if isinstance(tasks, dict):
+            tasks = [tasks]
 
-        for t in (tasks if isinstance(tasks, list) else [tasks]):
+        for t in tasks:
             sid = str(t.get("AlgTaskSession", "default"))
             media_name = t.get("MediaName") or ""
-            media_url = t.get("MedaiUrl") or ""
-            user_data = t.get("UaerData", [])
-            ctrl = t.get("ControlCommand", None)
-
+            media_url = t.get("MetadataUrl") or t.get("MediaUrl") or ""
+            raw_ud = t.get("UserData", [])
+            if isinstance(raw_ud, str):
+                try:
+                    user_data = json.loads(raw_ud)
+                except Exception:
+                    user_data = []
+            else:
+                user_data = raw_ud
             sess = ensure_session(sid)
-
             apply_config(sess, media_name, media_url, user_data, running_now=sess.running)
 
+            # 统一起停（只对于被勾选的算法做一层停止启动的判断）
+            ctrl = t.get("ControlCommand", None)
             if ctrl is not None:
-                should_run = (ctrl == 1)
+                should_run = (int(ctrl) == 1)
                 if should_run and not sess.running:
                     sess.running = True
                     start_selected(sess)
                 elif (not should_run) and sess.running:
                     sess.running = False
                     stop_all(sess)
+
+
+
 

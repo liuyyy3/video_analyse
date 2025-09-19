@@ -5,9 +5,9 @@
 
 # Node 的算法名 → 你的内部名（方便以后扩展）
 
-def norm_alg(name:str) -> str | None:
+def norm_alg(name: str) -> str | None:
     n = (name or "").lower()
-    if n in ("csrnet", "p2pnetconfig","p2pnetconfig2"):
+    if n in ("csrnet", "p2pnetconfig", "p2pnetconfig2"):
         return "csrnet"
 
     if n in ("leftover", "leftover_detect"):
