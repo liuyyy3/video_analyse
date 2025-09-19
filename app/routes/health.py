@@ -5,8 +5,8 @@
 
 # 健康检查
 
-from flask import Buleprint, jsonify
-bp = Buleprint("health", __name__)
+from flask import Blueprint, jsonify
+bp = Blueprint("health", __name__)
 
 @bp.get("/health")
 def health():

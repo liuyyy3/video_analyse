@@ -9,23 +9,14 @@ import threading
 import time
 import shutil
 import re
+import json
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List
 
 from app.core.config import Config
 from app.core.reporter import report_alarm_payload
 
 import detect.Image_diff_RK as leftover
-
-# app/adapters/leftover_adapter.py
-import threading, time, shutil, re, json
-from pathlib import Path
-from typing import Optional
-
-from app.core.config import Config
-from app.core.reporter import report_alarm_payload
-
-import detect.Image_diff_RK as leftover  # 按你的实际 import
 
 
 def safe_name(s: str) -> str:
@@ -65,7 +56,7 @@ class LeftoverAdapter:
         if self.thread and self.thread.is_alive():
             self.thread.join(timeout=2)
 
-    def _read_classes_from_debug_out(self) -> list[str]:
+    def _read_classes_from_debug_out(self) -> List[str]:
         """
         从 debug_out 里尽量读取 YOLO 的类别结果。
         优先 results.json，其次 labels.txt，实在没有返回 []。

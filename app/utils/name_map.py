@@ -5,8 +5,11 @@
 
 # Node 的算法名 → 你的内部名（方便以后扩展）
 
-def norm_alg(name: str) -> str | None:
-    n = (name or "").lower()
+from typing import Optional
+
+def norm_alg(name: str) -> Optional[str]:
+    n = (name or "").lower().strip()
+
     if n in ("csrnet", "p2pnetconfig", "p2pnetconfig2"):
         return "csrnet"
 

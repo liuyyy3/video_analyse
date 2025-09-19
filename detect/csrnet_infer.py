@@ -10,8 +10,8 @@ import cv2
 import time
 import numpy as np
 from datetime import datetime
-from check_rtsp import check_rtsp_stream
-from csrnet import csrnet_load_model, csrnet_infer_frame
+from .check_rtsp import check_rtsp_stream
+from .csrnet import csrnet_load_model, csrnet_infer_frame
 
 # 固定模型路径（写死）
 RKNN_MODEL = "/home/tom/model/CSRNet_2_All.rknn"
@@ -78,7 +78,7 @@ def frames_optimized(rtsp_url: str, fps=1):
 
 
 # 新增统一的帧源
-from ffmpeg_hw_reader import read_frames_hw   # VPU硬解，NV12用Python转成BGR，更省带宽/IO
+from .ffmpeg_hw_reader import read_frames_hw   # VPU硬解，NV12用Python转成BGR，更省带宽/IO
 
 def frames_from_vpu (rtsp_url: str, fps=1, first_timeout=10.0, debug=True):
     """使用硬件加速读取帧"""

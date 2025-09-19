@@ -31,7 +31,7 @@ from py_utils.coco_utils import COCO_test_helper
 
 # 复用 yolo11.py 里的常量/后处理(包含 dfl + 无锚后处理)
 #    注意：保持与你板上脚本同名模块导入路径一致；若不在 PYTHONPATH，可把 yolo11.py 放到同目录后 `import yolo11`
-from yolo11 import post_process, IMG_SIZE, CLASSES  # IMG_SIZE=(640,640)
+from .yolo11 import post_process, IMG_SIZE, CLASSES  # IMG_SIZE=(640,640)
 
 
 BASELINE_PATH = '/home/tom/model/leftover/carriage4.png'

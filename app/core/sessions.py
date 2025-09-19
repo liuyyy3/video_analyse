@@ -7,76 +7,100 @@
 
 import json
 from dataclasses import dataclass, field
-from typing import Dict, Any
+from typing import Dict, Any, Set
 from app.adapters.csrnet_adapter import CsrnetAdapter
 from app.adapters.leftover_adapter import LeftoverAdapter
 from app.utils.name_map import norm_alg
 
+
+@dataclass
 class Session:
     sid: str
     media_name: str = ""
     media_url: str = ""
-    selected: set[str] = field(default_factory=set)  # 勾选的算法集合
-    running: bool = False  # ControlCommand == 1 ?
-    opts: dict[str, dict] = field(default_factory=dict)
-    algs: dict[str, Any] = field(default_factory=lambda:{
+    selected: Set[str] = field(default_factory=set)  # 勾选的算法集合（PY38 用 typing.Set）
+    running: bool = False                            # ControlCommand == 1 ?
+    opts: Dict[str, dict] = field(default_factory=dict)
+    algs: Dict[str, Any] = field(default_factory=lambda: {
         "csrnet": CsrnetAdapter(),
         "leftover": LeftoverAdapter(),
     })
 
-SESSIONS: dict[str, Session] = {}
+SESSIONS: Dict[str, Session] = {}
 
 def ensure_session(sid: str) -> Session:
     if sid not in SESSIONS:
-        SESSIONS[sid] = Session(sid = sid)
+        SESSIONS[sid] = Session(sid=sid)
     return SESSIONS[sid]
 
 def start_selected(sess: Session):
-    # 只启动运行被勾选的算法
+    """只启动被勾选的算法"""
     for key in sess.selected:
-        sess.algs[key].start(
+        adapter = sess.algs.get(key)
+        if adapter is None:
+            continue
+        opts = sess.opts.get(key, {})
+        adapter.start(
             session_id=sess.sid,
             media_name=sess.media_name,
             media_url=sess.media_url,
-            **sess.opts.get(key, {})
+            **opts
         )
 
 def stop_all(sess: Session):
-    for key, adapter in sess.algs.items():
+    for _key, adapter in sess.algs.items():
         adapter.stop()
 
-def apply_config(sess:Session, media_name: str, media_url: str, items:list, running_now: bool):
-    # 把 Node 拉来的“任务配置”应用到本地：更新勾选集合/参数。
-    # 如果当前 running_now=True，做热更新：新增则启动，被取消则停止。
+def apply_config(sess: Session, media_name: str, media_url: str, items, running_now: bool):
+    """
+    把 Node 拉来的“任务配置”应用到本地：更新勾选集合/参数。
+    如果当前 running_now=True，做热更新：新增则启动，被取消则停止。
+    """
+    # 兼容后端把 UserData 当成字符串 JSON 的情况
     if isinstance(items, str):
         try:
-            items = json.load(items)
+            items = json.loads(items)
         except Exception:
             items = []
 
+    if not isinstance(items, list):
+        items = []
+
     old = set(sess.selected)
-    new = set()
-    new_opts = {}
+    new: Set[str] = set()
+    all_opts: Dict[str, dict] = {}
 
     for it in items:
-        key = norm_alg(it.get("name"))
+        name = (it or {}).get("name")
+        key = norm_alg(name)
         if not key:
             continue
+        all_opts[key] = it
         if bool(it.get("enabled", False)):
             new.add(key)
-            new_opts[key] = it
 
     sess.media_name, sess.media_url = media_name, media_url
     sess.selected = new
-    sess.opts.update(new_opts)
+    sess.opts = all_opts
 
     if running_now:
-        for key in new - old:  # 新增勾选 → 立即启动
-            sess.algs[key].start(
-                session_id = sess.sid,
-                media_name = media_name, media_url = media_url, **sess.opts.get(key, {}))
-        for key in old - new:  # 取消勾选 → 立即停止
-            sess.algs[key].stop()
+        # 新增勾选 → 立即启动
+        for key in (new - old):
+            adapter = sess.algs.get(key)
+            if adapter is None:
+                continue
+            adapter.start(
+                session_id=sess.sid,
+                media_name=media_name,
+                media_url=media_url,
+                **sess.opts.get(key, {})
+            )
+        # 取消勾选 → 立即停止
+        for key in (old - new):
+            adapter = sess.algs.get(key)
+            if adapter is None:
+                continue
+            adapter.stop()
 
 
 
