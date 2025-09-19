@@ -9,9 +9,6 @@ import os
 import cv2
 import time
 import numpy as np
-import subprocess
-import select
-import threading
 from datetime import datetime
 from check_rtsp import check_rtsp_stream
 from csrnet import csrnet_load_model, csrnet_infer_frame
@@ -81,8 +78,6 @@ def frames_optimized(rtsp_url: str, fps=1):
 
 
 # 新增统一的帧源
-from ffmpeg_vpu_bgr import read_frames_bgr   # VPU硬解，FFmpeg直接输出BGR24，比较简单
-from ffmpeg_vpu_nv12 import read_frames_nv12   # VPU硬解，NV12用Python转成BGR，更省带宽/IO
 from ffmpeg_hw_reader import read_frames_hw   # VPU硬解，NV12用Python转成BGR，更省带宽/IO
 
 def frames_from_vpu (rtsp_url: str, fps=1, first_timeout=10.0, debug=True):

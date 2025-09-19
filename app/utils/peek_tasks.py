@@ -16,9 +16,9 @@ HEADERS = {"Authorization": f"Bearer {TOKEN}"} if TOKEN else {}
 
 def parse_args():
     p = argparse.ArgumentParser()
-    p.add_argument("--pageNum", "-p", type=int,  default=int(os.getenv("PAGE_NUM", 1)))
+    p.add_argument("--pageNum", "-p", type=int, default=int(os.getenv("PAGE_NUM", 1)))
     p.add_argument("--pageSize", "-s", type=int, default=int(os.getenv("PAGE_SIZE", 10)))
-    p.add_argument("--keyword", "-k",            default=os.getenv("KEYWORD", ""))
+    p.add_argument("--keyword", "-k",           default=os.getenv("KEYWORD", ""))
     return p.parse_args()
 
 def main():
@@ -64,6 +64,7 @@ def main():
                 # rng_min, rng_max = rng.get("min"), rng.get("max")
                 print(f"  - name={name!r}, enabled={enabled}, normalRange(min={rng.get('min')}, max={rng.get('max')})")
                 # 看完整原始条目
+                # print('    ', json.dumps(u, ensure_ascii=False))
 
     except Exception as e:
         print("请求失败: ", e)
