@@ -5,6 +5,7 @@
 
 # 定时去 Node 拉 配置/控制
 import os
+import re
 import threading
 import time
 import json
@@ -15,6 +16,11 @@ from typing import Dict, Any, Set
 from app.core.config import Config
 from app.adapters.csrnet_adapter import CsrnetAdapter
 from app.adapters.leftover_adapter import LeftoverAdapter
+
+# 只从 MediaName 中解析，"3 - rtsp://x.x.x.x:8553/8"
+# 不解析/不回退 MediaUrl
+_DASH_CLASS = r'[\-\u2012-\u2015\u2212\uFE58\uFE63\uFF0D]'  # 常见各类破折号
+
 
 VERBOSE = os.getenv("VERBOSE", "0") == "1"
 
@@ -56,6 +62,28 @@ def _to_bool(v):
     return False
 
 
+def stream_from_media_name(media_name: str):
+    name = (media_name or "").strip()
+    if not name:
+        return ("", None)
+
+    m = re.search(r'(rtsp[s]?://\S+)', name, re.I)
+    if m:
+        left = name[:m.start()].rstrip()
+        left = re.sub(fr'{_DASH_CLASS}\s*$', '', left).strip()
+        return (left or name, m.group(1).strip())
+
+    # 从 - 后面分割出需要的 rtsp地址
+    norm = re.sub(_DASH_CLASS, '_', name)
+    if '-' in norm:
+        left, right = norm.strip('-', 1)
+        right = right.strip()
+        if right.lower().startswith('rtsp://'):
+            return (left.strip() or name, right)
+    return (name, None)
+
+
+
 class SessionState:
     def __init__(self, sid: str):
         self.sid = sid
@@ -80,7 +108,7 @@ class SessionState:
         if isinstance(raw_ud, str):
             s = raw_ud.strip()
             if os.getenv("VERBOSE", "0") == "1":
-                print(f"[task {self.sid}] raw UserData (len={len(s)}): {s[:160]}")
+                print(f"[task {self.sid}] raw UserData (len={len(s)}): {s[:200]}")
             if s:
                 try:
                     user_data = json.loads(s)
@@ -95,37 +123,58 @@ class SessionState:
         else:
             user_data = raw_ud
 
-        if isinstance(user_data, str):
+        if isinstance(user_data, dict):
             user_data = [user_data]
 
         if not isinstance(user_data, list):
             user_data = []
 
+        # 先解析 MediaName 得到 URL
+        clean_name, chosen_url = stream_from_media_name(media_name)
+
         if os.getenv("VERBOSE", "0") == "1":
-            print(f"[task {self.sid}] ControlCommand={int(running)} media={media_name} url={media_url!r}")
+            print(f"[task {self.sid}] ControlCommand={int(running)} media={chosen_url or media_name} url={media_url!r}")
             for i, it in enumerate(user_data):
-                print("  - alg[{:d}]: name={!r}, baseAlgname={!r}, enabled={}, confThresh={}, normalRange={}".format(
-                    i, it.get("name"), it.get("baseAlgname"),
-                    it.get("enabled"), it.get("confThresh"), it.get("normalRange")))
+                if isinstance(it, dict):
+                    print("  - alg[{:d}]: name={!r}, baseAlgname={!r}, enabled={}, confThresh={}, normalRange={}".format(
+                        i, it.get("name"), it.get("baseAlgname"),
+                        it.get("enabled"), it.get("confThresh"), it.get("normalRange")))
 
         new_sel, new_opts = set(), {}
+        enabled_seen, mapped_seen = [], []  # 仅用于调试总结
+
         for it in user_data:
             if not isinstance(it, dict):
                 continue
             key = _norm_alg(it)
-            if VERBOSE:
-                print((f"     -> mapped key={key!r}"))
-            if not key:
-                continue
-            new_opts[key] = it
-            if bool(it.get("enable", False)):
-                new_sel.add(key)
+            if os.getenv("VERBOSE", "0") == "1":
+                print(f"    -> mapped key={key!r}  (raw name={it.get('name')!r}, baseAlgname={it.get('baseAlgname')!r})")
+            if key:
+                mapped_seen.append(key)
+                new_opts[key] = it
+                flag = _to_bool(it.get("enabled", False))
+                if os.getenv("VERBOSE", "0") == "1":
+                    print(f"       enabled raw={it.get('enabled')!r} -> {_to_bool(it.get('enabled', False))}")
+                if flag:
+                    new_sel.add(key)
+                    if os.getenv("VERBOSE", "0") == "1":
+                        print(f"       -> enabled -> add '{key}'")
+                else:
+                    enabled_seen.append(f"{key}=False")
+
+        if os.getenv("VERBOSE", "0") == "1":
+            print(f"[task {self.sid}] computed new_sel={sorted(list(new_sel))}, mapped={mapped_seen}")
 
         old_sel = set(self.selected)
         self.selected = new_sel
         self.opts = new_opts
-        self.media_name = media_name or ""
-        self.media_url = media_url or ""
+        self.media_name = clean_name or ""
+        self.media_url = chosen_url or ""
+
+        if not self.media_url:
+            if os.getenv("VERBOSE", "0") == "1":
+                print(f"[task {self.sid}] MediaName 未解析到 rtsp:// 地址，跳过本轮。raw={media_name!r}")
+            return
 
         # ③ 决策：只有 ControlCommand==1 且存在 enabled:true 的算法才会启动
         if not running:
@@ -139,16 +188,14 @@ class SessionState:
         if running and not new_sel:
             if os.getenv("VERBOSE", "0") == "1":
                 print(f"[task {self.sid}] no enabled algorithms -> nothing to start")
-            # 若之前有运行中的、但现在全被取消勾选，也要停
-            for k in (old_sel - new_sel):
-                self.adapters.get(k) and self.adapters[k].stop()
             return
 
         # ④ 热更新：新增勾选→启动；取消勾选→停止
         for k in (new_sel - old_sel):
             if os.getenv("VERBOSE", "0") == "1":
-                print(
-                    f"[task {self.sid}] START {k} media={self.media_name} url={self.media_url!r} opts={self.opts.get(k)}")
+                # print(f"[task {self.sid}] START {k} media={self.media_name} url={self.media_url!r} opts={self.opts.get(k)}")
+                print(f"[task {self.sid}] START {k} media={self.media_url} opts={self.opts.get(k)}")
+
             self.adapters[k].start(
                 session_id=self.sid,
                 media_name=self.media_name,
@@ -156,7 +203,7 @@ class SessionState:
                 **(self.opts.get(k) or {})
             )
         for k in (old_sel - new_sel):
-            if VERBOSE:
+            if os.getenv("VERBOSE", "0") == "1":
                 print(f"[task {self.sid}] STOP {k} (disabled)")
             self.adapters.get(k) and self.adapters[k].stop()
 
