@@ -102,40 +102,49 @@ class Poller(threading.Thread):
                 print("[poller] error:", e)
             self.stop_evt.wait(self.interval)
 
-
     def tick(self):
-        # === 1) 拉任务列表（你们后端的数据结构可能是：一个数组，包含每个任务的状态）===
-        headers = {"Authorization": f"Bearer {Config.TOKEN}"} if Config.TOKEN else {}
         params = {"pageSize": Config.PAGE_SIZE, "pageNum": Config.PAGE_NUM, "keyword": ""}
-        r = requests.get(Config.TASK_FETCH_URL, headers=headers, params=params, timeout=8)
-
+        headers = {"Authorization": f"Bearer {Config.TOKEN}"} if Config.TOKEN else {}
+        url = Config.TASK_FETCH_URL
+        print(f"[poller] GET {url} params={params}")
+        r = requests.get(url, params=params, headers=headers, timeout=8)
+        print(f"[poller] <- {r.status_code}")
         if r.status_code != 200:
-            print("[poller] fetch", r.status_code, r.text[:200])
+            print("[poller] err:", r.text[:200])
             return
 
         resp = r.json()
         rows = resp.get("data") or resp.get("rows") or resp.get("list") or []
-        if not isinstance(rows, list):
-            if isinstance(resp.get("data"), dict):
-                rows = resp["data"].get("list") or resp["data"].get("data") or []
-            if not isinstance(rows, list):
-                print("[poller] unexpected payload shape")
-                return
-
+        if isinstance(resp.get("data"), dict):
+            rows = resp["data"].get("list") or resp["data"].get("data") or rows
+        print(f"[poller] rows={len(rows)}")
 
         for t in rows:
             sid = str(t.get("AlgTaskSession") or t.get("id") or t.get("TaskDesc") or "default")
             run = int(t.get("ControlCommand", 0)) == 1
-            media_name = str(t.get("MediaName") or "")
-            media_url = str(t.get("MetadataUrl") or t.get("MediaUrl") or "")
+            mname = str(t.get("MediaName") or "")
+            murl = str(t.get("MetadataUrl") or t.get("MediaUrl") or "")
             udata = t.get("UserData") or []
+            print(f"[poller] task sid={sid} run={run} media={mname} url={murl!r}")
 
             sess = self.sessions.get(sid)
-
             if not sess:
                 sess = SessionState(sid)
                 self.sessions[sid] = sess
-            sess.apply(media_name, media_url, udata, run)
+
+            before = set(sess.selected)
+            sess.apply(mname, murl, udata, run)
+            after = set(sess.selected)
+
+            added = after - before
+            removed = before - after
+            if run and added:
+                print(f"[poller] start {added} for sid={sid}")
+            if removed:
+                print(f"[poller] stop {removed} for sid={sid}")
+            if not run and before:
+                print(f"[poller] stop all for sid={sid}")
+
 
 
 
