@@ -18,15 +18,32 @@ from app.adapters.leftover_adapter import LeftoverAdapter
 
 VERBOSE = os.getenv("VERBOSE", "0") == "1"
 
+# app/core/poller.py 里
 def _norm_alg(item: dict) -> str:
-    # 把任务里的算法配置项映射成内部键：csrnet / leftover
-    name = (item.get("name") or "").lower()
-    base = (item.get("baseAlgname") or "").lower()
-    if "拥挤" in base or "p2pnetconfig" in name or "crowd" in name:
+    """
+    把 UserData 里的一条算法配置映射为内部键：
+      - 'csrnet'   人员拥挤/人群密度  (p2pnetconfig / crowd / csrnet / 含“拥挤”“密度”“人群”)
+      - 'leftover' 遗留物            (p2pnetconfig2 / leftover / yolo / 含“遗留”“遗留物”)
+    匹配尽量宽松，避免因为命名差异识别失败。
+    """
+    name = str(item.get("name") or "").strip().lower()
+    base = str(item.get("baseAlgname") or "").strip()
+    base_l = base.lower()
+
+    # —— csrnet（拥挤/密度）——
+    if any(k in name for k in ("p2pnetconfig", "csrnet", "crowd")):
         return "csrnet"
-    if "遗留" in base or "leftover" in name or "遗留物" in base or "yolo" in name:
+    if any(kw in base for kw in ("拥挤", "密度", "人群", "人员拥挤")):
+        return "csrnet"
+
+    # —— leftover（遗留物）——
+    if any(k in name for k in ("p2pnetconfig2", "leftover", "yolo")):
         return "leftover"
+    if any(kw in base for kw in ("遗留", "遗留物")):
+        return "leftover"
+
     return ""
+
 
 
 def _to_bool(v):
@@ -96,6 +113,8 @@ class SessionState:
             if not isinstance(it, dict):
                 continue
             key = _norm_alg(it)
+            if VERBOSE:
+                print((f"     -> mapped key={key!r}"))
             if not key:
                 continue
             new_opts[key] = it
