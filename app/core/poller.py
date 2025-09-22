@@ -8,6 +8,7 @@ import os
 import threading
 import time
 import json
+import ast
 import requests
 from typing import Dict, Any, Set
 
@@ -27,6 +28,17 @@ def _norm_alg(item: dict) -> str:
         return "leftover"
     return ""
 
+
+def _to_bool(v):
+    if isinstance(v, bool):
+        return v
+    if isinstance(v, str):
+        return v.strip().lower() in ("true", "1", "yes", "y", "on")
+    if isinstance(v, (int, float)):
+        return v != 0
+    return False
+
+
 class SessionState:
     def __init__(self, sid: str):
         self.sid = sid
@@ -40,25 +52,46 @@ class SessionState:
         }
 
     def apply(self, media_name: str, media_url: str, user_data, running: bool):
-        if isinstance(user_data, str):
-            try:
-                user_data = json.load(user_data)
-            except Exception:
+        # --- ① 解析 UserData：兼容字符串 JSON / Python 字面量 / 各种包裹 ---
+        raw_ud = user_data
+        if not raw_ud:
+            raw_ud = []
+        if isinstance(raw_ud, dict):
+            raw_ud = (raw_ud.get("list") or raw_ud.get("data")
+                      or raw_ud.get("UserData") or raw_ud.get("userdata")
+                      or [])
+        if isinstance(raw_ud, str):
+            s = raw_ud.strip()
+            if os.getenv("VERBOSE", "0") == "1":
+                print(f"[task {self.sid}] raw UserData (len={len(s)}): {s[:160]}")
+            if s:
+                try:
+                    user_data = json.loads(s)
+                except Exception as e1:
+                    try:
+                        user_data = ast.literal_eval(s)
+                    except Exception as e2:
+                        print(f"[task {self.sid}] UserData parse failed: {e1} | {e2}")
+                        user_data = []
+            else:
                 user_data = []
+        else:
+            user_data = raw_ud
+
+        if isinstance(user_data, str):
+            user_data = [user_data]
+
         if not isinstance(user_data, list):
             user_data = []
 
-        if VERBOSE:
+        if os.getenv("VERBOSE", "0") == "1":
             print(f"[task {self.sid}] ControlCommand={int(running)} media={media_name} url={media_url!r}")
             for i, it in enumerate(user_data):
-                if not isinstance(it, dict):
-                    continue
                 print("  - alg[{:d}]: name={!r}, baseAlgname={!r}, enabled={}, confThresh={}, normalRange={}".format(
                     i, it.get("name"), it.get("baseAlgname"),
                     it.get("enabled"), it.get("confThresh"), it.get("normalRange")))
 
-        new_sel: Set[str] = set()
-        new_opts: Dict[str, dict] = {}
+        new_sel, new_opts = set(), {}
         for it in user_data:
             if not isinstance(it, dict):
                 continue
@@ -78,14 +111,14 @@ class SessionState:
         # ③ 决策：只有 ControlCommand==1 且存在 enabled:true 的算法才会启动
         if not running:
             if old_sel:
-                if VERBOSE:
+                if os.getenv("VERBOSE", "0") == "1":
                     print(f"[task {self.sid}] stop all (ControlCommand=0)")
             for k in old_sel:
                 self.adapters.get(k) and self.adapters[k].stop()
             return
 
         if running and not new_sel:
-            if VERBOSE:
+            if os.getenv("VERBOSE", "0") == "1":
                 print(f"[task {self.sid}] no enabled algorithms -> nothing to start")
             # 若之前有运行中的、但现在全被取消勾选，也要停
             for k in (old_sel - new_sel):
@@ -94,7 +127,7 @@ class SessionState:
 
         # ④ 热更新：新增勾选→启动；取消勾选→停止
         for k in (new_sel - old_sel):
-            if VERBOSE:
+            if os.getenv("VERBOSE", "0") == "1":
                 print(
                     f"[task {self.sid}] START {k} media={self.media_name} url={self.media_url!r} opts={self.opts.get(k)}")
             self.adapters[k].start(
