@@ -69,7 +69,7 @@ class CsrnetAdapter:
 
     def _loop(self):
         safe_media = safe_name(self.media_name)
-        snap_dir = Config.SNAP_DIR / "csrnet" / f"{self.session_id}__media_{safe_media}"
+        snap_dir = Config.SNAP_DIR / "csrnet" / f"{self.session_id}_media_{safe_media}"
         snap_dir.mkdir(parents=True, exist_ok=True)
 
         for bgr in frames_from_vpu(self.media_url, fps=1, first_timeout=10.0, debug=False):
