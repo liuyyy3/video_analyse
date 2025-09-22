@@ -4,31 +4,35 @@
 # @Date  : 2025/09/17/10:17
 
 # 注册蓝图、加载配置，启动后端的主程序代码
+# 兼容两种运行方式：
+    # 1) python3 -m app.app
+    # 2) python3 app/app.py   （必须在项目根目录执行）
 
-from flask import Flask
+from flask import Flask, jsonify
 import os
+import atexit
 from typing import Optional
 from .routes.health import bp as health_bp
-from .core.poller import Poller
+from app.core.poller import Poller
 from .core.config import Config
 
-poller: Optional[Poller] = None
+app = Flask(__name__)
 
-# 兼容两种运行方式：
-# 1) python3 -m app.app
-# 2) python3 app/app.py   （必须在项目根目录执行）
-try:
-    from .routes.health import bp as health_bp
-except ImportError:
-    from app.routes.health import bp as health_bp
+@app.get("/health")
+def health():
+    return jsonify({"ok", True})
 
-def create_app():
-    app = Flask(__name__)
-    app.register_blueprint(health_bp)
-    # TODO：这里再注册你其他路由 / 挂后台线程等
-    return app
+# 启动轮询获取 json信息的线程
+poller = Poller(interval=5.0)
+poller.start()
+print("[boot] poller started, target:", os.getenv("NODE_BASE", "http://192.168.9.60:8080"))
 
-app = create_app()
+def _bye():
+    try:
+        poller.stop()
+        print("[shutdown] poller stopped")
+    except Exception:
+        pass
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.getenv("PORT", "8888")), threaded=True)
