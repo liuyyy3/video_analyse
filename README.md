@@ -350,23 +350,23 @@
   ```
 - **Response**:
   - **Status Code**: `200`
-    - **Body**:
-      ```json
-      {
-        "code": 200,
-        "data": 
-          {
-            "id": 4,
-            "AlgTaskSession": "任务1",    		// 任务编号
-            "ControlCommand": 1,     // 1: 启动 0: 停止
-            "TaskDesc": "测试1",
-            "AlgTaskStatus": "0",    // 设置的是 1连接中 2正常 3连接失败 4视频流不存在  5
-            "AlarmBody": 0,          // warning list里面的id
-            "AlarmProtocol": 0,
-            "MediaName": "3",        // 相机编号
-            "MediaUrl": "rtsp://192.168.9.140:8554/3",   // 视频源地址
-            "ScheduleId": -1,     // 保留，先不做
-            "UserData":     // UserData里面的value用字符串的形式发送
+  - **Body**:
+    ```json
+    {
+      "code": 200,
+      "data": 
+        {
+          "id": 4,
+          "AlgTaskSession": "任务1",    		// 任务编号
+          "ControlCommand": 1,     // 1: 启动 0: 停止
+          "TaskDesc": "测试1",
+          "AlgTaskStatus": "0",    // 设置的是 1连接中 2正常 3连接失败 4视频流不存在  5
+          "AlarmBody": 0,          // warning list里面的id
+          "AlarmProtocol": 0,
+          "MediaName": "3",        // 相机编号
+          "MediaUrl": "rtsp://192.168.9.140:8554/3",   // 视频源地址
+          "ScheduleId": -1,     // 保留，先不做
+          "UserData":     // UserData里面的value用字符串的形式发送
               [{
                     "name":"p2pnetconfig",    //算法名称
                     "baseAlgname":"人员拥挤检测",    // 算法配置信息
@@ -379,12 +379,11 @@
                     "baseAlgname":"遗留物检测",     // 是否勾选启用该算法（人员拥挤检测）
                     "enabled":false,
                     "confThresh":0.5     // 检测阈值（默认值0.5）
-              }]",    
-
+              }],    
           "created_at": "2025-09-22 10:28:15"
         },
-        "message": "成功"
-      }
+      "message": "成功"
+    }
     ```
 
 ### 2. 新增 | 修改
