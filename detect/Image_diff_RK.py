@@ -34,6 +34,8 @@ from py_utils.coco_utils import COCO_test_helper
 from .yolo11 import post_process, IMG_SIZE, CLASSES  # IMG_SIZE=(640,640)
 
 
+# BASELINE_PATH = '/home/tom/model/leftover/carriage4.png'
+# CLEAN_PATH = '/home/tom/model/leftover/carriage4-2.png'
 BASELINE_PATH = '/home/tom/model/leftover/carriage4.png'
 CLEAN_PATH = '/home/tom/model/leftover/carriage4-2.png'
 
