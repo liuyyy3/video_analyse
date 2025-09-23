@@ -1,3 +1,9 @@
+# encoding: utf-8
+# @File  : yolo11.py
+# @Author: Xinghui
+# @Date  : 2025/09/11/09:57
+
+# 目标检测
 import os
 import cv2
 import sys

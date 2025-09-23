@@ -1,5 +1,5 @@
 # encoding: utf-8
-# @File  : config_store.py
+# @File  : config.py
 # @Author: Xinghui
 # @Date  : 2025/09/17/10:50
 
@@ -26,6 +26,8 @@ class Config:
     POLL_INTERVAL = float(os.getenv('POLL_INTERVAL', "5.0"))
 
     # 告警画面 & 检测结果目录
-    SNAP_DIR = Path(os.getenv("SNAP_DIR", BASE / "snapshots"))
-    RESULT_DIR = Path(os.getenv("RESULT_DIR", BASE / "results"))
+    # SNAP_DIR = Path(os.getenv("SNAP_DIR", BASE / "snapshots"))
+    SNAP_DIR = Path(os.getenv("SNAP_DIR", "/home/tom/activitiMonitor/public/static/"))
+
+    # RESULT_DIR = Path(os.getenv("RESULT_DIR", BASE / "results"))
 

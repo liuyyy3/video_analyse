@@ -1,5 +1,5 @@
 # encoding: utf-8
-# @File  : check_rtsp_cv.py.py
+# @File  : check_rtsp.py.py
 # @Author: Xinghui
 # @Date  : 2025/09/11/10:03
 

@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 from typing import Dict, Any, Set
 from app.adapters.csrnet_adapter import CsrnetAdapter
 from app.adapters.leftover_adapter import LeftoverAdapter
-from app.utils.name_map import norm_alg
+from app.utils.name_map import norm_alg_item
 
 
 @dataclass
@@ -72,7 +72,7 @@ def apply_config(sess: Session, media_name: str, media_url: str, items, running_
 
     for it in items:
         name = (it or {}).get("name")
-        key = norm_alg(name)
+        key = norm_alg_item(it)
         if not key:
             continue
         all_opts[key] = it

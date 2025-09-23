@@ -5,15 +5,20 @@
 
 # 包一层线程启动/停止（用你现成 csrnet_infer）
 
-import threading
+
 import re
+import cv2
 import time
+import threading
+import numpy as np
+from datetime import datetime
+from pathlib import Path
 from typing import Optional
+
 from app.core.config import Config
 from app.core.reporter import report_alarm_payload
+from detect.csrnet_infer import csrnet_load_model, csrnet_infer_frame, frames_from_vpu, INPUT_SIZE, density_to_heatmap
 
-from detect.csrnet_infer import csrnet_load_model, csrnet_infer_frame, frames_from_vpu, INPUT_SIZE
-import cv2
 
 def safe_name(s: str) -> str:
     return re.sub(r'[^a-zA-Z0-9_\-\.]', '_', s or 'noname')
@@ -30,7 +35,7 @@ class CsrnetAdapter:
         self.max_normal = 20
         self.conf_thresh = 0.5
         self.media_name = ""
-        self.media_url  = ""
+        self.media_url = ""
         self.base_algname = "人员拥挤检测"
         self.alg_name = "p2pnetconfig"
 
@@ -42,11 +47,11 @@ class CsrnetAdapter:
 
         self.session_id = session_id
         self.media_name = media_name or ""
-        self.media_url  = media_url or ""
+        self.media_url = media_url or ""
 
         # 读取任务里的参数
         self.base_algname = str(opts.get("baseAlgname", "人员拥挤检测"))
-        self.alg_name     = str(opts.get("name", "p2pnetconfig"))
+        self.alg_name = str(opts.get("name", "p2pnetconfig"))
         rng = (opts.get("normalRange") or {})
         self.min_normal = int(rng.get("min", 10))
         self.max_normal = int(rng.get("max", 20))
@@ -69,7 +74,7 @@ class CsrnetAdapter:
 
     def _loop(self):
         safe_media = safe_name(self.media_name)
-        snap_dir = Config.SNAP_DIR / "csrnet" / f"{self.session_id}_media_{safe_media}"
+        snap_dir = Config.SNAP_DIR / f"{self.session_id}_media_{safe_media}" / "csrnet"
         snap_dir.mkdir(parents=True, exist_ok=True)
 
         for bgr in frames_from_vpu(self.media_url, fps=1, first_timeout=10.0, debug=False):
@@ -77,6 +82,7 @@ class CsrnetAdapter:
                 break
 
             count, dm, inf_ms, vis_bgr = csrnet_infer_frame(self.model, bgr, input_size=INPUT_SIZE)
+            heatmap = density_to_heatmap(dm)
             if count < self.min_normal:
                 label = "spare"
             elif count > self.max_normal:
@@ -84,9 +90,15 @@ class CsrnetAdapter:
             else:
                 label = "normal"
 
-            ts = int(time.time())
-            snap_path = snap_dir / f"{ts}.jpg"
+            # ts = int(time.time())
+            detected = int(count)
+            timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+            snap_path = snap_dir / f"crowd_{detected}_{timestamp}.jpg"
+            heatmap_path = snap_dir / f"heatmap_{detected}_{timestamp}.jpg"
             cv2.imwrite(str(snap_path), vis_bgr, [int(cv2.IMWRITE_JPEG_QUALITY), 85])
+            cv2.imwrite(str(heatmap_path), heatmap, [int(cv2.IMWRITE_JPEG_QUALITY), 85])
+
+            print(f"[crowd] 人数: {detected}, 状态: {label}, 推理耗时:{inf_ms:.2f}ms")
 
             # 组织 UserData（对象）
             user_data = {
@@ -108,5 +120,4 @@ class CsrnetAdapter:
                 )
             except Exception as e:
                 print("[csrnet] report error:", e)
-
 

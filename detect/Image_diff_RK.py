@@ -1,5 +1,5 @@
 # encoding: utf-8
-# @File  : Image_diff_complete.py
+# @File  : Image_diff_RK.py
 # @Author: Xinghui
 # @Date  : 2025/09/09/10:42
 

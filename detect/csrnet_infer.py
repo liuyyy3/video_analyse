@@ -1,5 +1,5 @@
 # encoding: utf-8
-# @File  : main.py
+# @File  : csrnet_infer.py
 # @Author: Xinghui
 # @Date  : 2025/09/11/09:57
 
