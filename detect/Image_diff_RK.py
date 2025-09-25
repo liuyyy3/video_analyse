@@ -42,14 +42,13 @@ CLEAN_PATH = '/home/tom/activityMonitor/video_analyse/app/utils/carriage4-2.png'
 ROI_JSON_PATH = '/home/tom/activityMonitor/video_analyse/app/utils/carriage4_half_door.json'
 
 # 程序需要输出的文件夹以及文件
-OUT_DIR = './debug_out'
+OUT_DIR = '/home/tom/activityMonitor/video_analyse/app/utils'
 OUT_RAW_SIDE = os.path.join(OUT_DIR, "1_raw_side_by_side.png")  # 精简版要保留
 OUT_PREP_SIDE = os.path.join(OUT_DIR, "2_prep_side_by_side.png")  # 精简版要保留
 OUT_CAND_OVERLAY = os.path.join(OUT_DIR, "4_cand_overlay.png")  # 候选框叠加图  # 精简版要保留
 OUT_CAND_EXPAND_OVERLAY = os.path.join(OUT_DIR, "5_cand_expand_overlay.png")  # 扩展框叠加图  # 精简版要保留
 OUT_YOLO_OVERLAY = os.path.join(OUT_DIR, "6_yolo_overlay.png")
 CROP_DIR = os.path.join(OUT_DIR, "corps")
-
 
 RKNN_MODEL_PATH = "/home/tom/activityMonitor/video_analyse/detect/model/yolo11n_relu.rknn"
 rknn = RKNN_model_container(RKNN_MODEL_PATH, target='rk3588', device_id=None)
@@ -61,9 +60,6 @@ rknn = RKNN()
 # assert rknn.load_rknn(RKNN_MODEL_PATH) == 0, 'load_rknn failed'
 # assert rknn.init_runtime(target='rk3588') == 0, 'init_runtime failed'
 
-
-# 调试信息如下
-
 ret = rknn.load_rknn(RKNN_MODEL_PATH)
 if ret != 0:
     exit("load rknn failed")
@@ -71,8 +67,6 @@ ret = rknn.init_runtime(target='rk3588')
 if ret != 0:
     exit("init runtime failed")
 print("✅ NPU 初始化完成")
-
-
 
 
 # 差分/清理参数 （根据分辨率进行调整 ）
@@ -639,6 +633,23 @@ def main():
 
     # 保存叠加可视化图片
     cv2.imwrite(OUT_YOLO_OVERLAY, overlay6)
+
+    # 把每轮检测结果写成 JSON，供外部读取
+    # det_results: 形如 [{'label': 'bag', 'conf': 0.81, 'bbox_xyxy': [x1,y1,x2,y2]}, ...]
+    # unknown_cnt: 未识别的框数
+    results = {"objects": []}
+    for det in det_results:
+        results["objects"].append({
+            "label": det.get("label", "unknown"),
+            "conf": float(det.get("conf", 0.0)),
+            "bbox_xyxy": det.get("bbox_xyxy", None)
+        })
+    for _ in range(int(unknown_cnt)):
+        results["objects"].append({"label": "unknown"})
+    os.makedirs(OUT_DIR, exist_ok=True)
+    with open(os.path.join(OUT_DIR, "results.json"), "w", encoding="utf-8") as f:
+        json.dump(results, f, ensure_ascii=False)
+
     # 上报 json图
     payload = {
         "baseline_image": os.path.abspath(BASELINE_PATH),

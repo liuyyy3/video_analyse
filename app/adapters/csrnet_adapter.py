@@ -17,7 +17,8 @@ from typing import Optional
 
 from app.core.config import Config
 from app.core.reporter import report_alarm_payload
-from detect.csrnet_infer import csrnet_load_model, csrnet_infer_frame, frames_from_vpu, INPUT_SIZE, density_to_heatmap
+from detect.csrnet_infer import csrnet_load_model, csrnet_infer_frame, frames_from_vpu, \
+    INPUT_SIZE, density_to_heatmap
 
 
 def safe_name(s: str) -> str:
@@ -93,15 +94,18 @@ class CsrnetAdapter:
             else:
                 label = "normal"
 
-            # ts = int(time.time())
             detected = int(count)
+
+            print(f"[crowd] 人数: {detected}, 状态: {label}, 推理耗时:{inf_ms:.2f}ms")
+            if label == "spare":
+                continue
+
             timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
             snap_path = snap_dir / f"crowd_{detected}_{timestamp}.jpg"
             heatmap_path = snap_dir / f"heatmap_{detected}_{timestamp}.jpg"
             cv2.imwrite(str(snap_path), vis_bgr, [int(cv2.IMWRITE_JPEG_QUALITY), 85])
             cv2.imwrite(str(heatmap_path), heatmap, [int(cv2.IMWRITE_JPEG_QUALITY), 85])
 
-            print(f"[crowd] 人数: {detected}, 状态: {label}, 推理耗时:{inf_ms:.2f}ms")
 
             # 组织 UserData（对象）
             user_data = {

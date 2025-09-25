@@ -15,9 +15,7 @@ IMG_SIZE = (640, 480)  # W, H
 
 
 def csrnet_load_model(rknn_path: str):
-    """
-    返回已初始化好的 rknn 对象。
-    """
+    # 返回已初始化好的 rknn 对象。
     rknn = RKNN()
     print("[CSRNet] loading:", rknn_path)
     rknn.load_rknn(rknn_path)
@@ -26,17 +24,15 @@ def csrnet_load_model(rknn_path: str):
     return rknn
 
 def csrnet_infer_frame(rknn: RKNN, frame_bgr, input_size=(640, 480)):
-    """
-    对单帧做推理。
-    返回: (count_int, density_map(h,w,float32), infer_ms, vis_input_bgr)
-    - vis_input_bgr: 实际送入模型的那张 BGR（已resize），用于保存“原帧”
-    """
-    # 预处理：按你原脚本的流程来（BGR->RGB/归一化/NCHW）
+    # 对单帧做推理。
+    # 返回: (count_int, density_map(h,w,float32), infer_ms, vis_input_bgr)
+    # - vis_input_bgr: 实际送入模型的那张 BGR（已resize），用于保存“原帧”
+    # 预处理：按你原脚本的流程来 (BGR->RGB/归一化/NCHW)
     W, H = input_size
     img_bgr = cv2.resize(frame_bgr, (W, H))
     img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB).astype(np.float32) / 255.0
     mean = np.array([0.485, 0.456, 0.406], dtype=np.float32)
-    std  = np.array([0.229, 0.224, 0.225], dtype=np.float32)
+    std = np.array([0.229, 0.224, 0.225], dtype=np.float32)
     norm = (img_rgb - mean) / std
     x = np.transpose(norm, (2, 0, 1))[None, ...].astype(np.float32)  # [1,3,H,W]
 
