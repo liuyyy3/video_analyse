@@ -16,8 +16,8 @@ from .csrnet import csrnet_load_model, csrnet_infer_frame
 # 固定模型路径（写死）
 RKNN_MODEL = "/home/tom/activityMonitor/video_analyse/detect/model/CSRNet_2_All.rknn"
 SAVE_DIR = "/home/tom/Flask/crowd"  # 截图保存的文件夹
-DELAY_SEC = 1.0                           # 每秒抓一帧
-INPUT_SIZE = (640, 480)                    # 送入模型的尺寸 (W,H)
+DELAY_SEC = 1.0      # 每 1秒抓 1帧
+INPUT_SIZE = (640, 480)     # 送入模型的尺寸 (W,H)
 
 os.makedirs(SAVE_DIR, exist_ok=True)
 

@@ -149,7 +149,7 @@ class SessionState:
             print(f"[task {self.sid}] computed new_sel={sorted(list(new_sel))}, mapped={mapped_seen}")
 
         old_sel = set(self.selected)
-        self.selected = new_sel
+        # self.selected = new_sel
         self.opts = new_opts
         self.media_name = clean_name or ""
         self.media_url = chosen_url or ""
@@ -166,11 +166,14 @@ class SessionState:
                     print(f"[task {self.sid}] stop all (ControlCommand=0)")
             for k in old_sel:
                 self.adapters.get(k) and self.adapters[k].stop()
+                # 进入停止状态后要清空运行列表，避免再次启动的时候无法出发 start()
+                self.selected = set()
             return
 
         if running and not new_sel:
             if os.getenv("VERBOSE", "0") == "1":
                 print(f"[task {self.sid}] no enabled algorithms -> nothing to start")
+                self.selected = set()
             return
 
         # ④ 热更新：新增勾选→启动；取消勾选→停止
@@ -189,6 +192,7 @@ class SessionState:
             if os.getenv("VERBOSE", "0") == "1":
                 print(f"[task {self.sid}] STOP {k} (disabled)")
             self.adapters.get(k) and self.adapters[k].stop()
+        self.selected = new_sel
 
 
 class Poller(threading.Thread):
