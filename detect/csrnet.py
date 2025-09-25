@@ -9,7 +9,7 @@ from rknn.api import RKNN
 import matplotlib.pyplot as plt
 import time
 
-RKNN_MODEL = '/home/tom/video_analyse/detect/model/CSRNet_2_All.rknn'
+RKNN_MODEL = '/home/tom/activityMonitor/video_analyse/detect/model/CSRNet_2_All.rknn'
 IMG_PATH = '/home/tom/model/IMG_crowd/crowd_3.png'
 IMG_SIZE = (640, 480)  # W, H
 

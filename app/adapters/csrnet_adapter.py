@@ -59,7 +59,7 @@ class CsrnetAdapter:
 
         if self.model is None:
             # TODO: 换成你的 rknn 模型路径
-            self.model = csrnet_load_model("/home/tom/model/CSRNet_2_test.rknn")
+            self.model = csrnet_load_model("/home/tom/activityMonitor/video_analyse/detect/model/CSRNet_2_All.rknn")
 
         self.thread = threading.Thread(target=self._loop, daemon=True)
         self.thread.start()
@@ -74,7 +74,10 @@ class CsrnetAdapter:
 
     def _loop(self):
         safe_media = safe_name(self.media_name)
+        # 保存检测结果的路径
         snap_dir = Config.SNAP_DIR / f"{self.session_id}_media_{safe_media}" / "csrnet"
+        # snap_dir = Config.SNAP_DIR / "images"
+
         snap_dir.mkdir(parents=True, exist_ok=True)
 
         for bgr in frames_from_vpu(self.media_url, fps=1, first_timeout=10.0, debug=False):

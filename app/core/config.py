@@ -8,7 +8,7 @@
 import os
 from pathlib import Path
 
-BASE = Path(os.getenv('VA_BASE_DIR', "/home/tom/video_analyse"))
+BASE = Path(os.getenv('VA_BASE_DIR', "/home/tom/activityMonitor/video_analyse"))
 
 class Config:
     # Node服务根地址
@@ -25,9 +25,9 @@ class Config:
     # 轮询频率（秒）
     POLL_INTERVAL = float(os.getenv('POLL_INTERVAL', "5.0"))
 
-    # 告警画面 & 检测结果目录
+    # 保存告警画面 & 检测结果目录
     # SNAP_DIR = Path(os.getenv("SNAP_DIR", BASE / "snapshots"))
-    SNAP_DIR = Path(os.getenv("SNAP_DIR", "/home/tom/activitiMonitor/public/static/"))
+    SNAP_DIR = Path(os.getenv("SNAP_DIR", "/home/tom/activityMonitor/public/static/"))
 
     # RESULT_DIR = Path(os.getenv("RESULT_DIR", BASE / "results"))
 

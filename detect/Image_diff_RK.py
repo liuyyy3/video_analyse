@@ -36,10 +36,10 @@ from .yolo11 import post_process, IMG_SIZE, CLASSES  # IMG_SIZE=(640,640)
 
 # BASELINE_PATH = '/home/tom/model/leftover/carriage4.png'
 # CLEAN_PATH = '/home/tom/model/leftover/carriage4-2.png'
-BASELINE_PATH = '/home/tom/video_analyse/app/utils/carriage4.png'
-CLEAN_PATH = '/home/tom/video_analyse/app/utils/carriage4-2.png'
+BASELINE_PATH = '/home/tom/activityMonitor/video_analyse/app/utils/carriage4.png'
+CLEAN_PATH = '/home/tom/activityMonitor/video_analyse/app/utils/carriage4-2.png'
 
-ROI_JSON_PATH = '/home/tom/video_analyse/app/utils/carriage4_half_door.json'
+ROI_JSON_PATH = '/home/tom/activityMonitor/video_analyse/app/utils/carriage4_half_door.json'
 
 # 程序需要输出的文件夹以及文件
 OUT_DIR = './debug_out'
@@ -51,7 +51,7 @@ OUT_YOLO_OVERLAY = os.path.join(OUT_DIR, "6_yolo_overlay.png")
 CROP_DIR = os.path.join(OUT_DIR, "corps")
 
 
-RKNN_MODEL_PATH = "/home/tom/video_analyse/detect/model/yolo11n_relu.rknn"
+RKNN_MODEL_PATH = "/home/tom/activityMonitor/video_analyse/detect/model/yolo11n_relu.rknn"
 rknn = RKNN_model_container(RKNN_MODEL_PATH, target='rk3588', device_id=None)
 
 # 全局 RKNN 会话（供后面的推理函数复用）
