@@ -167,13 +167,13 @@ class SessionState:
             for k in old_sel:
                 self.adapters.get(k) and self.adapters[k].stop()
                 # 进入停止状态后要清空运行列表，避免再次启动的时候无法出发 start()
-                self.selected = set()
+            self.selected = set()
             return
 
         if running and not new_sel:
             if os.getenv("VERBOSE", "0") == "1":
                 print(f"[task {self.sid}] no enabled algorithms -> nothing to start")
-                self.selected = set()
+            self.selected = set()
             return
 
         # ④ 热更新：新增勾选→启动；取消勾选→停止
@@ -188,6 +188,7 @@ class SessionState:
                 media_url=self.media_url,
                 **(self.opts.get(k) or {})
             )
+
         for k in (old_sel - new_sel):
             if os.getenv("VERBOSE", "0") == "1":
                 print(f"[task {self.sid}] STOP {k} (disabled)")
